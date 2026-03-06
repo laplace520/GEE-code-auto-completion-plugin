@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "GEE Code Auto-Completion Plugin",
+  "version": "1.0.0",
+  "description": "Auto-completion plugin for the Google Earth Engine (GEE) code editor. Supports ee.* API and custom variable completion.",
+  "content_scripts": [
+    {
+      "matches": ["https://code.earthengine.google.com/*"],
+      "js": ["ee_api_data.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end"
+    }
+  ]
+}

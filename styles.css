@@ -1,0 +1,38 @@
+/* styles.css – GEE Code Auto-Completion Plugin dropdown styles */
+
+#gee-autocomplete-dropdown {
+  position: fixed;
+  z-index: 99999;
+  margin: 0;
+  padding: 2px 0;
+  list-style: none;
+  background: #ffffff;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  max-height: 260px;
+  min-width: 180px;
+  overflow-y: auto;
+  font-family: 'Roboto Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  display: none;
+}
+
+#gee-autocomplete-dropdown .gee-ac-item {
+  padding: 5px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #202020;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+#gee-autocomplete-dropdown .gee-ac-item:last-child {
+  border-bottom: none;
+}
+
+#gee-autocomplete-dropdown .gee-ac-item:hover,
+#gee-autocomplete-dropdown .gee-ac-item.gee-ac-selected {
+  background-color: #1a73e8;
+  color: #ffffff;
+}
