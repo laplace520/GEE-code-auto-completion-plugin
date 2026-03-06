@@ -1,0 +1,123 @@
+/* Keep styles isolated to avoid affecting the host app. */
+.gee-autocomplete-hidden {
+  display: none !important;
+}
+
+.gee-ac-hidden {
+  display: none !important;
+}
+
+.gee-ac-popup {
+  position: fixed;
+  z-index: 2147483647;
+  width: min(620px, calc(100vw - 24px));
+  max-height: min(360px, calc(100vh - 24px));
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  border: 1px solid #3a414d;
+  border-radius: 8px;
+  background: #1c212b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  color: #d8dee9;
+  overflow: hidden;
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.gee-ac-list {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid #2f3642;
+}
+
+.gee-ac-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.gee-ac-list::-webkit-scrollbar-thumb {
+  background: #465066;
+  border-radius: 8px;
+}
+
+.gee-ac-item {
+  padding: 7px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(79, 89, 110, 0.25);
+}
+
+.gee-ac-item:last-child {
+  border-bottom: none;
+}
+
+.gee-ac-item:hover,
+.gee-ac-item.is-selected {
+  background: #283145;
+}
+
+.gee-ac-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.gee-ac-item-label {
+  font-weight: 700;
+  color: #e7edf8;
+}
+
+.gee-ac-item-owner {
+  color: #95a1b8;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.gee-ac-item-signature {
+  margin-top: 3px;
+  color: #9dadc8;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.gee-ac-doc {
+  padding: 10px;
+  background: #151a22;
+  overflow: auto;
+  border-left: 1px solid rgba(79, 89, 110, 0.3);
+}
+
+.gee-ac-doc-title {
+  font-weight: 700;
+  color: #f2f6ff;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+
+.gee-ac-doc-desc {
+  color: #b5c0d8;
+  line-height: 1.45;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+
+.gee-ac-doc-owner {
+  color: #8897b2;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .gee-ac-popup {
+    grid-template-columns: 1fr;
+    max-height: min(360px, calc(100vh - 24px));
+  }
+
+  .gee-ac-doc {
+    display: none;
+  }
+
+  .gee-ac-list {
+    border-right: none;
+  }
+}

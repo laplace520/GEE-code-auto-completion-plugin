@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "GEE Autocomplete MVP",
+  "version": "0.5.0",
+  "description": "Autocomplete helpers for Google Earth Engine Code Editor.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://code.earthengine.google.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "host_permissions": [
+    "https://code.earthengine.google.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "completion-core.js",
+        "api-data.js",
+        "inject.js"
+      ],
+      "matches": [
+        "https://code.earthengine.google.com/*"
+      ]
+    }
+  ]
+}
