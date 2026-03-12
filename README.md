@@ -1,2 +1,3 @@
 # GEE-code-auto-completion-plugin
-It can make writing code more convenient, and inputting functions can be automatically completed.
+This is a plugin for coding in Google Earth Engine!
+It can make writing code more convenient, and inputting functions can be automatically completed!
