@@ -37,10 +37,7 @@
     if (context) {
       var entries = core.getCompletionEntries(context, apiIndex);
       if (entries.length) {
-        return {
-          context: context,
-          entries: entries
-        };
+        return { context: context, entries: entries };
       }
     }
 
@@ -66,10 +63,7 @@
       return null;
     }
 
-    return {
-      context: identifierContext,
-      entries: identifierEntries
-    };
+    return { context: identifierContext, entries: identifierEntries };
   }
 
   function ensureAcePopup() {
@@ -81,6 +75,10 @@
     popup.className = "gee-ac-popup gee-ac-hidden";
     popup.setAttribute("role", "listbox");
     popup.setAttribute("aria-label", "GEE autocomplete suggestions");
+    
+    // 【修复】强制固定定位和层级，避免受宿主环境 CSS 干扰乱跑或被遮挡
+    popup.style.position = "fixed";
+    popup.style.zIndex = "999999";
 
     var list = document.createElement("div");
     list.className = "gee-ac-list";
@@ -95,7 +93,7 @@
     state.acePopup = popup;
     state.acePopupState = {
       visible: false,
-      entries: [],
+      entries:[],
       selectedIndex: 0,
       receiver: "",
       replacePrefixLength: 0,
@@ -126,7 +124,6 @@
 
     top.appendChild(label);
     top.appendChild(owner);
-
     row.appendChild(top);
 
     if (entry.signature) {
@@ -157,7 +154,8 @@
 
     var desc = document.createElement("div");
     desc.className = "gee-ac-doc-desc";
-    desc.textContent = entry.doc || "No description.";
+    // 【修复】使用 innerHTML 渲染 GEE 原生文档里的 HTML 标签（如 <code>,<br>）
+    desc.innerHTML = entry.doc || "No description.";
 
     var owner = document.createElement("div");
     owner.className = "gee-ac-doc-owner";
@@ -178,6 +176,8 @@
     var row = popupState.cursorRow;
     var column = popupState.cursorColumn;
     var screen = editor.renderer.textToScreenCoordinates(row, column);
+    
+    // 因为设置了 position: fixed，直接基于屏幕视口左上角定位即可
     var left = screen.pageX - window.scrollX;
     var top = screen.pageY - window.scrollY + editor.renderer.lineHeight;
 
@@ -191,7 +191,6 @@
     if (rect.right > maxRight) {
       popup.style.left = Math.max(12, left - (rect.right - maxRight)) + "px";
     }
-
     if (rect.bottom > maxBottom) {
       popup.style.top = Math.max(12, screen.pageY - window.scrollY - rect.height - 4) + "px";
     }
@@ -205,7 +204,7 @@
     }
 
     popupState.visible = false;
-    popupState.entries = [];
+    popupState.entries =[];
     popupState.selectedIndex = 0;
     popupState.receiver = "";
     popupState.replacePrefixLength = 0;
@@ -219,13 +218,16 @@
     var popup = state.acePopup;
     var popupState = state.acePopupState;
 
+    // 【修复】只取前 100 条渲染，避免海量 DOM 创建导致浏览器卡死
+    var displayEntries = entries.slice(0, 100);
+
     popupState.listElement.innerHTML = "";
-    popupState.entries = entries;
+    popupState.entries = displayEntries;
     popupState.receiver = receiver;
     popupState.selectedIndex = selectedIndex;
     popupState.visible = true;
 
-    entries.forEach(function (entry, index) {
+    displayEntries.forEach(function (entry, index) {
       var item = buildEntryElement(entry, receiver, index === selectedIndex);
       item.dataset.index = String(index);
 
@@ -280,16 +282,17 @@
     var endColumn = cursor.column;
     var startColumn = Math.max(0, endColumn - prefixLength);
 
-    var insertTemplate = entry.insertText || entry.name;
-    var plain = core.snippetToPlainText(insertTemplate);
+    // 【核心优化】抛弃繁琐的参数补全，只补全名称，方便后续链式调用（如 ee.Geometry.Rectangle）
+    var textToInsert = entry.name;
     var doc = editor.session.getDocument();
 
     if (startColumn !== endColumn) {
       doc.removeInLine(row, startColumn, endColumn);
     }
 
-    doc.insert({ row: row, column: startColumn }, plain.text);
-    editor.moveCursorTo(row, startColumn + plain.cursorOffset);
+    doc.insert({ row: row, column: startColumn }, textToInsert);
+    // 【修复】不再依赖容易产生 NaN 的 cursorOffset 计算
+    editor.moveCursorTo(row, startColumn + textToInsert.length);
     editor.focus();
   }
 
@@ -323,7 +326,6 @@
     }
 
     state.activeAceEditor = editor;
-
     state.acePopupState.replacePrefixLength = result.context.prefix.length;
     state.acePopupState.cursorRow = cursor.row;
     state.acePopupState.cursorColumn = cursor.column;
@@ -369,11 +371,9 @@
           if (!popup || popup.classList.contains("gee-ac-hidden")) {
             return;
           }
-
           if (popup.contains(event.target)) {
             return;
           }
-
           hideAcePopup();
         },
         true
@@ -399,6 +399,11 @@
     }
   }
 
+  function isAcePopupActive(editor) {
+    var popupState = state.acePopupState;
+    return Boolean(editor && popupState && popupState.visible && state.activeAceEditor === editor);
+  }
+
   function attachAceKeybindings(editor) {
     if (!editor || editor.__geeAutocompleteCommandBound) {
       return;
@@ -409,8 +414,8 @@
     editor.commands.addCommand({
       name: "geeAutocompleteManual",
       bindKey: {
-        win: "Ctrl-Space",
-        mac: "Ctrl-Space|Command-Space"
+        win: "Ctrl-Space|Alt-Space",
+        mac: "Ctrl-Space|Alt-Space"
       },
       exec: function (instance) {
         triggerAcePopup(instance);
@@ -418,42 +423,55 @@
       readOnly: true
     });
 
-    var container = editor.container;
-    if (container && !container.__geeAutocompleteKeydownBound) {
-      container.__geeAutocompleteKeydownBound = true;
-      container.addEventListener(
-        "keydown",
-        function (event) {
-          var popupState = state.acePopupState;
-          if (!popupState || !popupState.visible || state.activeAceEditor !== editor) {
-            return;
+    if (!editor.__geeAutocompleteKeyboardHandlerBound && editor.keyBinding) {
+      editor.__geeAutocompleteKeyboardHandlerBound = true;
+      editor.keyBinding.addKeyboardHandler({
+        handleKeyboard: function (data, hashId, keyString) {
+          if (!isAcePopupActive(editor)) {
+            return false;
           }
 
-          if (event.key === "ArrowDown") {
-            event.preventDefault();
-            moveSelection(1);
-            return;
+          // 【修复】将按键匹配全部改为全小写字符，解决键盘无法控制问题
+          if (keyString === "down") {
+            return {
+              command: {
+                exec: function () { moveSelection(1); },
+                readOnly: true
+              }
+            };
           }
 
-          if (event.key === "ArrowUp") {
-            event.preventDefault();
-            moveSelection(-1);
-            return;
+          if (keyString === "up") {
+            return {
+              command: {
+                exec: function () { moveSelection(-1); },
+                readOnly: true
+              }
+            };
           }
 
-          if (event.key === "Enter" || event.key === "Tab") {
-            event.preventDefault();
-            applySelectedAceEntry(editor);
-            return;
+          // 【修复】支持 Enter (return) 和 Tab 双键确认补全
+          if (keyString === "return" || keyString === "tab") {
+            return {
+              command: {
+                exec: function () { applySelectedAceEntry(editor); },
+                readOnly: true
+              }
+            };
           }
 
-          if (event.key === "Escape") {
-            event.preventDefault();
-            hideAcePopup();
+          if (keyString === "esc") {
+            return {
+              command: {
+                exec: function () { hideAcePopup(); },
+                readOnly: true
+              }
+            };
           }
-        },
-        true
-      );
+
+          return false;
+        }
+      });
     }
   }
 
@@ -468,7 +486,6 @@
       if (!event || !event.command) {
         return;
       }
-
       var commandName = event.command.name;
 
       if (commandName === "insertstring") {
@@ -476,12 +493,10 @@
           triggerAcePopup(editor);
           return;
         }
-
         if (typeof event.args === "string" && /^[A-Za-z_$]$/.test(event.args)) {
           triggerAcePopup(editor);
           return;
         }
-
         if (state.acePopupState && state.acePopupState.visible) {
           refreshAcePopupIfVisible(editor);
         }
@@ -527,6 +542,13 @@
       }
     });
 
+    editor.on("focus", function () {
+      state.activeAceEditor = editor;
+      if (state.acePopupState && state.acePopupState.visible) {
+        updatePopupPosition(editor);
+      }
+    });
+
     editor.on("blur", function () {
       window.setTimeout(function () {
         if (document.activeElement && state.acePopup && state.acePopup.contains(document.activeElement)) {
@@ -541,25 +563,20 @@
     if (!editor || state.aceEditors.has(editor)) {
       return;
     }
-
     state.aceEditors.add(editor);
-
     bindGlobalPopupGuards();
     ensureAcePopup();
     attachAceKeybindings(editor);
     attachAceChangeHooks(editor);
-
     log("Attached to Ace editor with custom popup completer.");
   }
 
   function findAceEditors() {
     if (!window.ace || !window.ace.edit) {
-      return [];
+      return[];
     }
-
-    var editors = [];
+    var editors =[];
     var wrappers = document.querySelectorAll(".ace_editor");
-
     wrappers.forEach(function (wrapper) {
       try {
         var editor = window.ace.edit(wrapper);
@@ -570,7 +587,6 @@
         // Ignore wrappers that are not attached to an editor instance.
       }
     });
-
     return editors;
   }
 
@@ -586,7 +602,6 @@
     }
 
     var completionKind = window.monaco.languages.CompletionItemKind;
-    var insertRules = window.monaco.languages.CompletionItemInsertTextRule;
 
     ["javascript", "typescript"].forEach(function (languageId) {
       window.monaco.languages.registerCompletionItemProvider(languageId, {
@@ -597,7 +612,7 @@
           var result = getContextAndEntries(text, cursorIndex);
 
           if (!result) {
-            return { suggestions: [] };
+            return { suggestions:[] };
           }
 
           var startColumn = Math.max(1, position.column - result.context.prefix.length);
@@ -609,8 +624,6 @@
           );
 
           var suggestions = result.entries.map(function (entry, index) {
-            var insertText = entry.insertText || entry.name;
-            var isSnippet = /\$\d|\$\{\d+:[^}]+\}/.test(insertText);
             var kind = completionKind.Method;
             if (entry.kind === "namespace" || entry.kind === "property") {
               kind = completionKind.Property;
@@ -621,8 +634,8 @@
               kind: kind,
               detail: entry.signature || result.context.receiver,
               documentation: entry.doc || "",
-              insertText: insertText,
-              insertTextRules: isSnippet ? insertRules.InsertAsSnippet : undefined,
+              // 【核心优化】Monaco 也只插入纯净的名字，不附带 snippet 参数
+              insertText: entry.name, 
               range: range,
               sortText: String(index).padStart(4, "0")
             };
@@ -684,12 +697,14 @@
           renderCodeMirrorHintElement(element, entry);
         },
         hint: function (cmInstance) {
-          var snippetText = entry.insertText || entry.name;
-          var plain = core.snippetToPlainText(snippetText);
-          cmInstance.replaceRange(plain.text, from, to, "complete");
-
-          var start = cmInstance.indexFromPos(from);
-          cmInstance.setCursor(cmInstance.posFromIndex(start + plain.cursorOffset));
+          // 【核心优化】CodeMirror 也同样只插入名称
+          var textToInsert = entry.name;
+          
+          // 【修复】获取最新的光标位置作为替换终点，防止用户快速多敲的字母遗留
+          var currentTo = cmInstance.getCursor();
+          
+          cmInstance.replaceRange(textToInsert, from, currentTo, "complete");
+          // replaceRange 默认会自动把光标移动到替换后文本的末尾
         }
       };
     });
@@ -730,7 +745,6 @@
       if (!change || !Array.isArray(change.text)) {
         return;
       }
-
       var inserted = change.text.join("");
       if (inserted === "." || /^[A-Za-z_$]$/.test(inserted)) {
         showCodeMirrorHint(instance);
@@ -744,15 +758,13 @@
     if (!window.CodeMirror) {
       return [];
     }
-
-    var editors = [];
+    var editors =[];
     var wrappers = document.querySelectorAll(".CodeMirror");
     wrappers.forEach(function (wrapper) {
       if (wrapper.CodeMirror && editors.indexOf(wrapper.CodeMirror) === -1) {
         editors.push(wrapper.CodeMirror);
       }
     });
-
     return editors;
   }
 
@@ -760,9 +772,7 @@
     findAceEditors().forEach(function (editor) {
       attachAceEditor(editor);
     });
-
     registerMonacoProvider();
-
     findCodeMirrorEditors().forEach(function (editor) {
       attachCodeMirrorEditor(editor);
     });
@@ -784,15 +794,6 @@
 
   log("Engine probe: " + (detectEngines().join(", ") || "none yet"));
   scan();
-
-  var observer = new MutationObserver(function () {
-    scan();
-  });
-
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-  });
 
   window.setInterval(scan, 1500);
 })();
