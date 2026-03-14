@@ -9,28 +9,19 @@
         "https://code.earthengine.google.com/*"
       ],
       "js": [
-        "content.js"
+        "api-data.js",         
+        "completion-core.js",  
+        "inject.js"            
       ],
       "css": [
         "styles.css"
       ],
       "run_at": "document_idle",
-      "all_frames": true
+      "all_frames": true,
+      "world": "MAIN" 
     }
   ],
   "host_permissions": [
     "https://code.earthengine.google.com/*"
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "completion-core.js",
-        "api-data.js",
-        "inject.js"
-      ],
-      "matches": [
-        "https://code.earthengine.google.com/*"
-      ]
-    }
   ]
 }
